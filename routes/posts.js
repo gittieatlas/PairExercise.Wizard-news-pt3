@@ -1,5 +1,6 @@
 const express = require('express');
 const client = require('../db');
+const SQL = require('sql-template-strings');
 const postList = require('../views/postList');
 const postDetails = require('../views/postDetails');
 const addPost = require('../views/addPost');
@@ -40,16 +41,26 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', async (req, res, next) => {
+  console.log('in / of POST');
+
   const name = req.body.name;
   const title = req.body.title;
   const content = req.body.content;
 
-  // Insert the post in the database
-
-  // 'INSERT INTO posts (userid, title, content) VALUES ('14', 'test', 'content')
-
-  res.redirect(`/posts/${postId}`); // Redirect to the post details page
+  try {
+    const data = await client.query(
+      SQL`INSERT INTO posts (userid, title, content)
+          VALUES (  (SELECT id FROM users WHERE name = ${name} ),
+                    ${title},
+                    ${content} )
+          RETURNING id`
+    );
+    const postId = data.rows[0].id;
+    res.redirect(`/posts/${postId}`);
+  } catch (error) {
+    next(error);
+  }
 });
 
 module.exports = router;
